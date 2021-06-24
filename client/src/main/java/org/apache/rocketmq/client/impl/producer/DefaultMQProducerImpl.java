@@ -574,6 +574,17 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             String[] brokersSent = new String[timesTotal];
             for (; times < timesTotal; times++) {
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
+                /**
+                 * 在发送消息的时候，会试图从producer的TopicPublishInfoTable中获取路由信息，因为topic是带在message里的，所以第一次是缓存没有的，需要从namesrv
+                 * 拉topic信息，后续加入缓存并且由MQClientInstance#updateTopicRouteInfoFromNameServer 定时拉取此缓存里的最新信息（即只拉sender关心的topic）
+                 * 如果还是拉不到topic信息则使用默认topic的属性发出消息到broker（开启自动创建topic开关），broker发现没有topic会创建。
+                 *
+                 * 生产环境如果开启了自动创建Topic，会有3个影响
+                 *
+                 * 用户指定的读写队列数可能不是预期结果。创建的Topic的读队列数和写队列数取值为默认Topic（“TBW102”）的读队列数和Produce端设置的队列数的最小值。
+                 * 不能保证所有的Broker上都能注册该Topic。Broker创建了新的Topic后，新的Topic信息马上被同步给了Namesrv，然后其他的Producer也刚好都从Namesrv同步了该Topic的路由信息，则接下来所有的Producer都只会向这一个Broker发送消息，其他Broker也就不会再有机会创建新Topic。
+                 * 启用Broker故障延迟机制时，由于不是所有的Broker上都创建了同一Topic，可能会导致故障延迟命中失败。
+                 */
                 MessageQueue mqSelected = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName);
                 if (mqSelected != null) {
                     mq = mqSelected;
