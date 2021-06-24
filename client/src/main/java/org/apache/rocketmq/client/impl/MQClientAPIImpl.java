@@ -448,6 +448,9 @@ public class MQClientAPIImpl {
         long beginStartTime = System.currentTimeMillis();
         RemotingCommand request = null;
         String msgType = msg.getProperty(MessageConst.PROPERTY_MESSAGE_TYPE);
+        /**
+         * reply消息，https://www.jianshu.com/p/075090502803 rpc调用，producer进入阻塞，等待consumer reply
+         */
         boolean isReply = msgType != null && msgType.equals(MixAll.REPLY_MESSAGE_FLAG);
         if (isReply) {
             if (sendSmartMsg) {
