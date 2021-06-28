@@ -162,7 +162,22 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             });
 
         Bootstrap handler = this.bootstrap.group(this.eventLoopGroupWorker).channel(NioSocketChannel.class)
+                /**
+                 * 在TCP/IP协议中，无论发送多少数据，总是要在数据前面加上协议头，同时，对方接收到数据，也需要发送ACK表示确认。
+                 * 为了尽可能的利用网络带宽，TCP总是希望尽可能的发送足够大的数据。这里就涉及到一个名为Nagle的算法，该算法的目的就是为了
+                 * 尽可能发送大块数据，避免网络中充斥着许多小数据块。
+                 *
+                 * TCP_NODELAY就是用于启用或关于Nagle算法。如果要求高实时性，有数据发送时就马上发送，就将该选项设置为true关闭Nagle算法；
+                 * 如果要减少发送次数减少网络交互，就设置为false等累积一定大小后再发送。默认为false。
+                 *
+                 * Nagle算法适用于小包、高延迟的场合，而对于要求交互速度的b/s或c/s就不合适了。socket在创建的时候，默认都是使用Nagle算法的，这会导致交互速度严重下降，
+                 * 所以需要setsockopt函数来设置TCP_NODELAY为1。不过取消了Nagle算法，就会导致TCP碎片增多，效率可能会降低。所以，这也是要有所取舍的。
+                 */
             .option(ChannelOption.TCP_NODELAY, true)
+                /**
+                 * 当设置为true的时候，TCP会实现监控连接是否有效，当连接处于空闲状态的时候，超过了2个小时，本地的TCP实现会发送一个数据包给远程的 socket，如果远程没有
+                 * 发回响应，TCP会持续尝试11分钟，知道响应为止，如果在12分钟的时候还没响应，TCP尝试关闭socket连接。
+                 */
             .option(ChannelOption.SO_KEEPALIVE, false)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, nettyClientConfig.getConnectTimeoutMillis())
             .option(ChannelOption.SO_SNDBUF, nettyClientConfig.getClientSocketSndBufSize())
