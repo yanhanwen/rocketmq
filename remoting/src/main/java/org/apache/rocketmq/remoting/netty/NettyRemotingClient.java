@@ -175,8 +175,14 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                  */
             .option(ChannelOption.TCP_NODELAY, true)
                 /**
-                 * 当设置为true的时候，TCP会实现监控连接是否有效，当连接处于空闲状态的时候，超过了2个小时，本地的TCP实现会发送一个数据包给远程的 socket，如果远程没有
+                 * keepalive不是说TCP的常连接，当设置为true的时候，TCP会实现监控连接是否有效，当连接处于空闲状态的时候，
+                 * 超过了2个小时，本地的TCP实现会发送一个数据包给远程的 socket，如果远程没有
                  * 发回响应，TCP会持续尝试11分钟，知道响应为止，如果在12分钟的时候还没响应，TCP尝试关闭socket连接。
+                 * 当然，在客户端也可以使用这个参数。客户端Socket会每隔段的时间（大约两个小时）就会利用空闲的连接向服务器发送一个数据包。
+                 * 这个数据包并没有其它的作用，只是为了检测一下服务器是否仍处于活动状态。如果服务器未响应这个数据包，
+                 * 在大约11分钟后，客户端Socket再发送一个数据包，如果在12分钟内，服务器还没响应，那么客户端Socket将关闭。
+                 * 如果将Socket选项关闭，客户端Socket在服务器无效的情况下可能会长时间不会关闭。
+                 * 这个机制沒啥用
                  */
             .option(ChannelOption.SO_KEEPALIVE, false)
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, nettyClientConfig.getConnectTimeoutMillis())
