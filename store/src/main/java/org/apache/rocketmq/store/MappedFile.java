@@ -200,6 +200,7 @@ public class MappedFile extends ReferenceResource {
         assert messageExt != null;
         assert cb != null;
 
+        /** 当前写指针 */
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
