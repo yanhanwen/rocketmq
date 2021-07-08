@@ -21,11 +21,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import org.apache.log4j.Logger;
+import org.apache.rocketmq.client.exception.MQBrokerException;
+import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.client.producer.SendStatus;
 import org.apache.rocketmq.common.message.Message;
+import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.apache.rocketmq.test.base.BaseConf;
+import org.apache.rocketmq.test.base.IntegrationTestBase;
 import org.apache.rocketmq.test.client.consumer.tag.TagMessageWith1ConsumerIT;
 import org.apache.rocketmq.test.factory.ProducerFactory;
 import org.apache.rocketmq.test.util.RandomUtils;
@@ -41,13 +45,27 @@ public class BatchSendIT extends BaseConf {
 
     @Before
     public void setUp() {
-        topic = initTopic();
+//        topic = initTopic();
         logger.info(String.format("user topic[%s]!", topic));
     }
 
     @After
     public void tearDown() {
         super.shutdown();
+    }
+
+    @Test
+    public void createTopic() {
+        String topic = "testTopic2";
+        boolean b = IntegrationTestBase.initTopic(topic, nsAddr, clusterName);
+        assert b;
+    }
+
+    @Test
+    public void testSend() throws InterruptedException, RemotingException, MQClientException, MQBrokerException {
+        DefaultMQProducer producer = ProducerFactory.getRMQProducer(nsAddr);
+        SendResult sendResult = producer.send(new Message("testTopic2", RandomUtils.getStringByUUID().getBytes()));
+        System.out.println(sendResult);
     }
 
     @Test
