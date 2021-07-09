@@ -74,6 +74,11 @@ public class MappedFileQueue {
         }
     }
 
+    /**
+     * 根据消息存储时间戳找file，遍历file获取上次修改时间
+     * @param timestamp
+     * @return
+     */
     public MappedFile getMappedFileByTime(final long timestamp) {
         Object[] mfs = this.copyMappedFiles(0);
 
@@ -455,6 +460,9 @@ public class MappedFileQueue {
     /**
      * Finds a mapped file by offset.
      *
+     * 通过消息物理偏移量offset获取，这里不可以直接通过offset%mappedFileSize的原因就是mq会定期删除前面的文件，也就是说第一个文件不一定是00000000000000000000
+     * 因此计算公式为：(int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
+     *
      * @param offset Offset.
      * @param returnFirstOnNotFound If the mapped file is not found, then return the first one.
      * @return Mapped file or null (when not found and returnFirstOnNotFound is <code>false</code>).
@@ -472,6 +480,7 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    /** firstMappedFile.getFileFromOffset()获取存储文件最小偏移量 */
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {

@@ -42,18 +42,22 @@ import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
 public class MappedFile extends ReferenceResource {
+    /** 操作系统每页大小，默认 4k */
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
-
+    /** 当前 JVM 实例中 MappedFile 虚拟内存。*/
     private static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
-
+    /** 当前 JVM 实例中 MappedFile 对象个数 */
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
+    /** 刷写到磁盘指针，该指针之前的数据持久化到磁盘中。*/
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
     protected int fileSize;
     protected FileChannel fileChannel;
     /**
+     * 堆内存 ByteBuffer， 如果不为空，数据首先将存储在该 Buffer 中， 然后提交到 MappedFile 对应的内存映射文件 Buffer。
+     * transientStorePoolEnable 为 true 时不为空。
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
     protected ByteBuffer writeBuffer = null;

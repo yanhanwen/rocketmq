@@ -911,6 +911,10 @@ public class CommitLog {
         return putMessageResult;
     }
 
+    /**
+     * 刷盘
+     * @return
+     */
     public CompletableFuture<PutMessageStatus> submitFlushRequest(AppendMessageResult result, MessageExt messageExt) {
         // Synchronization flush
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
@@ -1662,6 +1666,7 @@ public class CommitLog {
 
             final long beginTimeMills = CommitLog.this.defaultMessageStore.now();
             // Write messages to the queue buffer
+            /** 写入 mappedfile中writebuffer , ByteBuffer.array()*/
             byteBuffer.put(this.msgStoreItemMemory.array(), 0, msgLen);
 
             AppendMessageResult result = new AppendMessageResult(AppendMessageStatus.PUT_OK, wroteOffset, msgLen, msgId,
