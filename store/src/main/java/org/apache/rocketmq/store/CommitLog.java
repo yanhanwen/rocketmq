@@ -1599,7 +1599,7 @@ public class CommitLog {
                 return new AppendMessageResult(AppendMessageStatus.MESSAGE_SIZE_EXCEEDED);
             }
 
-            /** 如果消息体长度超过空余空间，返回上层创建新的commitlog */
+            /** 如果消息体长度超过空余空间，返回上层创建新的commitlog END_FILE_MIN_BLANK_LENGTH为每个commitlog保留的空间，高四位存储剩余空间，低四位存储魔数*/
             // Determines whether there is sufficient free space
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.resetByteBuffer(this.msgStoreItemMemory, maxBlank);
