@@ -41,6 +41,10 @@ import org.apache.rocketmq.store.config.FlushDiskType;
 import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
+/**
+ * 根据是否开启 transientStorePoo!Enable 存在两种初始化情况。 transientStorePoolEnable 为 true 表示内容先存储在堆外内存，
+ * 然后通过 Commit 线程将数据提交到内存映射 Buffer 中，再通过 Flush 线程将内存映射 Buffer 中的数据持久化到磁盘中。
+ */
 public class MappedFile extends ReferenceResource {
     /** 操作系统每页大小，默认 4k */
     public static final int OS_PAGE_SIZE = 1024 * 4;
@@ -61,10 +65,12 @@ public class MappedFile extends ReferenceResource {
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
     protected ByteBuffer writeBuffer = null;
+    /** 堆内存池， transientStorePoolEnable 为 true 时启用。实际上就是重复利用ByteBuffer用于writeBuffer，使用时租借用后归还*/
     protected TransientStorePool transientStorePool = null;
     private String fileName;
     private long fileFromOffset;
     private File file;
+    /** mmap文件映射 */
     private MappedByteBuffer mappedByteBuffer;
     private volatile long storeTimestamp = 0;
     private boolean firstCreateInQueue = false;
@@ -162,6 +168,7 @@ public class MappedFile extends ReferenceResource {
         ensureDirOK(this.file.getParent());
 
         try {
+            /** 由于RandomAccessFile可以自由访问文件的任意位置,所以如果需要访问文件的部分内容,而不是把文件从头读到尾,使用RandomAccessFile将是更好的选择。 */
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
