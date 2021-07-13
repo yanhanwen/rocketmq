@@ -60,8 +60,17 @@ public class MappedFile extends ReferenceResource {
     protected int fileSize;
     protected FileChannel fileChannel;
     /**
-     * 堆内存 ByteBuffer， 如果不为空，数据首先将存储在该 Buffer 中， 然后提交到 MappedFile 对应的内存映射文件 Buffer。
-     * transientStorePoolEnable 为 true 时不为空。
+     * 堆内存 ByteBuffer， transientStorePoolEnable 为 true 时不为空。
+     * 如果不为空说明开启了transientStorePool，数据首先将存储在该堆外内存中， 然后提交到 MappedFile 对应的内存映射文件 MappedByteBuffer即page cache。
+     * 大家是不是发现了一个有趣的点，如果开启transientStorePoolEnable机制，是不是有了读写分离的效果，先写入writerBuffer中，读却是从mappedByteBuffer中读取。
+     * 第一种，Mmap+PageCache的方式，读写消息都走的是pageCache，这样子读写都在pagecache里面不可避免会有锁的问题，在并发的读写操作情况下，会出现缺页中断降低，内存加锁，污染页的回写。
+     * 第二种，DirectByteBuffer(堆外内存)+PageCache的两层架构方式，这样子可以实现读写消息分离，写入消息时候写到的是DirectByteBuffer——堆外内存中,读消息走的是PageCache(对于,DirectByteBuffer是两步刷盘，一步是刷到PageCache，还有一步是刷到磁盘文件中)，带来的好处就是，避免了内存操作的很多容易堵的地方，降低了时延，比如说缺页中断降低，内存加锁，污染页的回写。
+     * 不知道大家会不会有另外一个担忧，如果开启了transientStorePoolEnable，内存锁定机制，那是不是随着commitlog文件的不断增加，最终导致内存溢出？
+     * 从这里可以看出，TransientStorePool默认会初始化5个DirectByteBuffer(对外内存)，并提供内存锁定功能，即这部分内存不会被置换，可以通过transientStorePoolSize参数控制。
+     * 在消息写入消息时，首先从池子中获取一个DirectByteBuffer进行消息的追加。当5个DirectByteBuffer全部写满消息后，该如何处理呢？从RocketMQ的设计中来看，同一时间，只会对一个commitlog文件进行顺序写，写完一个后，继续创建一个新的commitlog文件。故TransientStorePool的设计思想是循环利用这5个DirectByteBuffer，只需要写入到DirectByteBuffer的内容被提交到PageCache后，即可重复利用。对应的代码如下：
+     * 缺点：
+     * 会增加数据丢失的可能性，如果Broker JVM进程异常退出，提交到PageCache中的消息是不会丢失的，但存在堆外内存(DirectByteBuffer)中但还未提交到PageCache中的这部分消息，将会丢失。但通常情况下，RocketMQ进程退出的可能性不大。
+     * 原文链接：https://blog.csdn.net/prestigeding/article/details/92800672
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
     protected ByteBuffer writeBuffer = null;

@@ -1619,7 +1619,8 @@ public class CommitLog {
                     queueOffset, CommitLog.this.defaultMessageStore.now() - beginTimeMills);
             }
 
-            /** buffer.flip() 写模式，此时只将消息存储到当前选择的commitlog映射出的mappedfile中的buffer，并没有刷到磁盘上 */
+            /** buffer.flip() 写模式，此时只将消息存储到当前选择的commitlog映射出的mappedfile中的buffer，并没有刷到磁盘上
+             * ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice(); */
             // Initialization of storage space
             this.resetByteBuffer(msgStoreItemMemory, msgLen);
             // 1 TOTALSIZE
