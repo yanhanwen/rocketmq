@@ -65,7 +65,7 @@ public class MappedFile extends ReferenceResource {
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
     protected ByteBuffer writeBuffer = null;
-    /** 堆内存池， transientStorePoolEnable 为 true 时启用。实际上就是重复利用ByteBuffer用于writeBuffer，使用时租借用后归还*/
+    /** 堆内存池， transientStorePoolEnable 为 true 时启用。提供一种内存锁定，将当前堆外内存一直锁定在内存中，避免被进程将内存交换到磁盘 */
     protected TransientStorePool transientStorePool = null;
     private String fileName;
     private long fileFromOffset;
@@ -278,6 +278,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
+     * 刷 盘指的是将内存中的 数据刷写到磁盘，永久存储在磁盘
      * @return The current flushed position
      */
     public int flush(final int flushLeastPages) {
@@ -286,6 +287,9 @@ public class MappedFile extends ReferenceResource {
                 int value = getReadPosition();
 
                 try {
+                    /**
+                     * force 方法将内存中 的数据 持久化到磁盘
+                     */
                     //We only append data to fileChannel or mappedByteBuffer, never both.
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
                         this.fileChannel.force(false);
@@ -306,6 +310,12 @@ public class MappedFile extends ReferenceResource {
         return this.getFlushedPosition();
     }
 
+    /**
+     * 内存映射文件的提交动作
+     * commitLeastPages 为本次提交最小的页数
+     * @param commitLeastPages
+     * @return
+     */
     public int commit(final int commitLeastPages) {
         if (writeBuffer == null) {
             //no need to commit data to file channel, so just regard wrotePosition as committedPosition.
@@ -335,6 +345,9 @@ public class MappedFile extends ReferenceResource {
 
         if (writePos - lastCommittedPosition > commitLeastPages) {
             try {
+                /**
+                 * slice() 方法根据现有的缓冲区创建一个 子缓冲区。也就是它创建一个新的缓冲区，新缓冲区与原来的缓冲区的一部分共享数据。
+                 */
                 ByteBuffer byteBuffer = writeBuffer.slice();
                 byteBuffer.position(lastCommittedPosition);
                 byteBuffer.limit(writePos);

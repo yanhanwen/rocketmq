@@ -47,6 +47,9 @@ public class TransientStorePool {
      * It's a heavy init method.
      */
     public void init() {
+        /**
+         * 创建 poolSize 个堆外内存 ， 并利用 com.sun.jna.Library 类库将该批内存锁定，避免被 置换到交换区，提高存储性能。
+         */
         for (int i = 0; i < poolSize; i++) {
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(fileSize);
 
