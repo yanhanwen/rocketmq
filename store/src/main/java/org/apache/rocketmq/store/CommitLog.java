@@ -929,6 +929,9 @@ public class CommitLog {
                  */
                 GroupCommitRequest request = new GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes(),
                         this.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());
+                /**
+                 * 这里有wakeup
+                 */
                 service.putRequest(request);
                 return request.future();
             } else {
@@ -1428,6 +1431,9 @@ public class CommitLog {
             synchronized (this.requestsWrite) {
                 this.requestsWrite.add(request);
             }
+            /**
+             * 如果已有线程在操作则无需处理
+             */
             this.wakeup();
         }
 
