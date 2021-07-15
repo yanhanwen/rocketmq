@@ -75,6 +75,9 @@ public class CommitLog {
             defaultMessageStore.getMessageStoreConfig().getMappedFileSizeCommitLog(), defaultMessageStore.getAllocateMappedFileService());
         this.defaultMessageStore = defaultMessageStore;
 
+        /**
+         * 部署上 同步异步刷盘可以分两个集群，允许丢失消息的可以发送到异步刷盘集群
+         */
         if (FlushDiskType.SYNC_FLUSH == defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {
             this.flushCommitLogService = new GroupCommitService();
         } else {
@@ -664,6 +667,11 @@ public class CommitLog {
 
         CompletableFuture<PutMessageStatus> flushResultFuture = submitFlushRequest(result, msg);
         CompletableFuture<PutMessageStatus> replicaResultFuture = submitReplicaRequest(result, msg);
+        /**
+         * thenCombine会在flushResultFuture和replicaResultFuture都执行完成后将两个结果合并
+         * 两个任务中只要有一个执行异常，则将该异常信息作为指定任务的执行结果。
+         * 两个任务是并行执行的，它们之间并没有先后依赖顺序。
+         */
         return flushResultFuture.thenCombine(replicaResultFuture, (flushStatus, replicaStatus) -> {
             if (flushStatus != PutMessageStatus.PUT_OK) {
                 putMessageResult.setPutMessageStatus(flushStatus);
