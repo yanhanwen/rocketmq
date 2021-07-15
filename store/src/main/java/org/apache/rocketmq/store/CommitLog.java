@@ -1432,6 +1432,9 @@ public class CommitLog {
      * GroupCommit Service
      */
     class GroupCommitService extends FlushCommitLogService {
+        /**
+         * 避免同步刷盘消费任务与其他消息生产者提交任务直接的锁竞争， 提供读容器与写容器，这两个容器每执行完一次任务后，交互，继续消费任务。
+         */
         private volatile List<GroupCommitRequest> requestsWrite = new ArrayList<GroupCommitRequest>();
         private volatile List<GroupCommitRequest> requestsRead = new ArrayList<GroupCommitRequest>();
 
@@ -1440,11 +1443,14 @@ public class CommitLog {
                 this.requestsWrite.add(request);
             }
             /**
-             * 如果已有线程在操作则无需处理
+             * hasNotified无需重复设置
              */
             this.wakeup();
         }
 
+        /**
+         * 这里不需要加锁 只是将指针赋值，之前某个线程正在add当然会继续add到当前List上
+         */
         private void swapRequests() {
             List<GroupCommitRequest> tmp = this.requestsWrite;
             this.requestsWrite = this.requestsRead;
@@ -1485,6 +1491,9 @@ public class CommitLog {
 
             while (!this.isStopped()) {
                 try {
+                    /**
+                     * 每处理一批同步刷盘请求（ requestsRead 容器中请求）后“休 息” 1Oms， 然后继续处理下一批，其任务的核心实现为 doCommit 方法。
+                     */
                     this.waitForRunning(10);
                     this.doCommit();
                 } catch (Exception e) {
@@ -1492,6 +1501,9 @@ public class CommitLog {
                 }
             }
 
+            /**
+             * 通过isStop控制线程退出，退出后需要执行一次交换，处理存量数据
+             */
             // Under normal circumstances shutdown, wait for the arrival of the
             // request, and then flush
             try {

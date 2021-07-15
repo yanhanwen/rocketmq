@@ -127,6 +127,9 @@ public abstract class ServiceThread implements Runnable {
     }
 
     protected void waitForRunning(long interval) {
+        /**
+         * 对于GroupCommitThread：这里只是说会await休息10ms，但是无论如何都会交换队列然后执行外面的doCommit，如果发现有线程设置了hasNotified=true说明不能休息需要立刻执行
+         */
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();
             return;
