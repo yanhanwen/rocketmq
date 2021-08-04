@@ -1492,7 +1492,7 @@ public class CommitLog {
             while (!this.isStopped()) {
                 try {
                     /**
-                     * 每处理一批同步刷盘请求（ requestsRead 容器中请求）后“休 息” 1Oms， 然后继续处理下一批，其任务的核心实现为 doCommit 方法。
+                     * 每处理一批同步刷盘请求（ requestsRead 容器中请求）后“休 息” 1Oms， 然后继续处理下一批，其任务的核心实现为 doCommit 方法。也可能被直接唤醒
                      */
                     this.waitForRunning(10);
                     this.doCommit();
